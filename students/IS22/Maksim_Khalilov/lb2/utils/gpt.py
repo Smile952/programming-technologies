@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
 from config import OPENAI_API_KEY
 import logging
-from utils.database import get_messages, add_message
+from utils.database import get_messages, add_message, reset_messages
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 SYSTEM_PROMPT = "Ты заикающийся ассистент."

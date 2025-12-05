@@ -1,36 +1,46 @@
-import sqlite3
+from sqlalchemy import create_engine, Column, Integer, Text
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-conn = sqlite3.connect("messages.db")
-cursor = conn.cursor()
+engine = create_engine("sqlite:///messages.db")
+Session = sessionmaker(bind=engine)
 
-# создаём таблицу, если её нет
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS messages (
-    user_id INTEGER,
-    role TEXT,
-    content TEXT
-)
-""")
-conn.commit()
+Base = declarative_base()
 
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    role = Column(Text)
+    content = Column(Text)
+
+
+Base.metadata.create_all(engine)
 
 def add_message(user_id: int, role: str, content: str):
-    cursor.execute(
-        "INSERT INTO messages (user_id, role, content) VALUES (?, ?, ?)",
-        (user_id, role, content)
-    )
-    conn.commit()
-
+    session = Session()
+    msg = Message(user_id=user_id, role=role, content=content)
+    session.add(msg)
+    session.commit()
+    session.close()
 
 def get_messages(user_id: int, limit: int = 10):
-    cursor.execute(
-        "SELECT role, content FROM messages WHERE user_id = ? ORDER BY ROWID DESC LIMIT ?",
-        (user_id, limit)
+    session = Session()
+    rows = (
+        session.query(Message)
+        .filter(Message.user_id == user_id)
+        .order_by(Message.id.desc())
+        .limit(limit)
+        .all()
     )
-    rows = cursor.fetchall()
-    return list(reversed(rows))  # чтобы шло в правильном порядке
+    session.close()
+
+    return [(msg.role, msg.content) for msg in reversed(rows)]
 
 
 def reset_messages(user_id: int):
-    cursor.execute("DELETE FROM messages WHERE user_id = ?", (user_id,))
-    conn.commit()
+    session = Session()
+    session.query(Message).filter(Message.user_id == user_id).delete()
+    session.commit()
+    session.close()
